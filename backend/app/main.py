@@ -4,14 +4,15 @@ from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from backend.app.services.brand_checker import brand_checker
-from backend.app.services.guideline_parser import guideline_parser
-from backend.app.services.guideline_storage import guideline_storage
+# Application services
+from app.services.brand_checker import brand_checker
+from app.services.guideline_parser import guideline_parser
+from app.services.guideline_storage import guideline_storage
 
 
-# --------------------------------------------------
+# ==================================================
 # APPLICATION CONFIGURATION
-# --------------------------------------------------
+# ==================================================
 
 app = FastAPI(
     title="BrandGuard AI",
@@ -23,10 +24,10 @@ app = FastAPI(
 )
 
 
-# --------------------------------------------------
+# ==================================================
 # CORS CONFIGURATION
 # Allows React frontend to communicate with FastAPI
-# --------------------------------------------------
+# ==================================================
 
 app.add_middleware(
     CORSMiddleware,
@@ -40,17 +41,17 @@ app.add_middleware(
 )
 
 
-# --------------------------------------------------
+# ==================================================
 # REQUEST MODELS
-# --------------------------------------------------
+# ==================================================
 
 class ContentRequest(BaseModel):
     content: str
 
 
-# --------------------------------------------------
+# ==================================================
 # ROOT ROUTE
-# --------------------------------------------------
+# ==================================================
 
 @app.get("/")
 async def root():
@@ -63,9 +64,9 @@ async def root():
     }
 
 
-# --------------------------------------------------
+# ==================================================
 # HEALTH CHECK
-# --------------------------------------------------
+# ==================================================
 
 @app.get("/health")
 async def health_check():
@@ -76,9 +77,9 @@ async def health_check():
     }
 
 
-# --------------------------------------------------
+# ==================================================
 # APPLICATION INFORMATION
-# --------------------------------------------------
+# ==================================================
 
 @app.get("/api/v1/info")
 async def application_info():
@@ -101,16 +102,15 @@ async def application_info():
     }
 
 
-# --------------------------------------------------
+# ==================================================
 # CONTENT COMPLIANCE CHECKER
-# --------------------------------------------------
+# ==================================================
 
 @app.post("/api/v1/check-content")
 async def check_content(request: ContentRequest):
 
     content = request.content.strip()
 
-    # Validate submitted content
     if not content:
         raise HTTPException(
             status_code=400,
@@ -140,7 +140,7 @@ async def check_content(request: ContentRequest):
         guideline_text=guideline_text
     )
 
-    # Add guideline information to the response
+    # Add guideline information
     result["guideline_id"] = active_guideline.get("id")
     result["guideline_filename"] = active_guideline.get("filename")
 
@@ -151,9 +151,9 @@ async def check_content(request: ContentRequest):
     return result
 
 
-# --------------------------------------------------
+# ==================================================
 # UPLOAD BRAND GUIDELINES
-# --------------------------------------------------
+# ==================================================
 
 @app.post("/api/v1/upload-guidelines")
 async def upload_guidelines(file: UploadFile = File(...)):
@@ -168,14 +168,13 @@ async def upload_guidelines(file: UploadFile = File(...)):
     # Read uploaded file
     pdf_bytes = await file.read()
 
-    # Validate empty file
     if not pdf_bytes:
         raise HTTPException(
             status_code=400,
             detail="Uploaded PDF is empty."
         )
 
-    # Validate maximum file size: 10 MB
+    # Maximum file size: 10 MB
     max_file_size = 10 * 1024 * 1024
 
     if len(pdf_bytes) > max_file_size:
@@ -184,7 +183,7 @@ async def upload_guidelines(file: UploadFile = File(...)):
             detail="PDF file size must not exceed 10 MB."
         )
 
-    # Validate PDF file signature
+    # Validate PDF signature
     if not pdf_bytes.startswith(b"%PDF-"):
         raise HTTPException(
             status_code=400,
@@ -192,9 +191,7 @@ async def upload_guidelines(file: UploadFile = File(...)):
         )
 
     # Extract text from PDF
-    extraction_result = guideline_parser.extract_text(
-        pdf_bytes
-    )
+    extraction_result = guideline_parser.extract_text(pdf_bytes)
 
     if not extraction_result.get("success"):
         raise HTTPException(
@@ -213,7 +210,7 @@ async def upload_guidelines(file: UploadFile = File(...)):
             )
         )
 
-    # Save extracted guideline information
+    # Save guideline information
     saved_guideline = guideline_storage.save_guideline(
         filename=file.filename,
         extracted_text=extracted_text,
@@ -231,17 +228,16 @@ async def upload_guidelines(file: UploadFile = File(...)):
     }
 
 
-# --------------------------------------------------
+# ==================================================
 # GET ALL UPLOADED GUIDELINES
-# --------------------------------------------------
+# ==================================================
 
 @app.get("/api/v1/guidelines")
 async def get_guidelines():
 
     guidelines = guideline_storage.get_all_guidelines()
 
-    # Do not expose the complete extracted PDF text
-    # in the dashboard listing.
+    # Do not expose complete extracted PDF text
     guideline_list = []
 
     for guideline in guidelines:
