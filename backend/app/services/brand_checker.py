@@ -1,4 +1,4 @@
-import re
+﻿import re
 
 
 class BrandComplianceChecker:
@@ -7,17 +7,22 @@ class BrandComplianceChecker:
 
         findings = []
 
-        # Default rules, used only if no guideline text is supplied.
+        # Default rules
         approved_name = "BrandGuard Cloud"
         approved_uptime = "99.9%"
 
         prohibited_claims = [
             "Fastest platform in the world",
             "Guaranteed results",
-            "Number one platform"
+            "Number one platform",
+            "world's number one solution",
+            "number one solution",
+            "100% success",
+            "guaranteed success",
+            "guarantees 100% success"
         ]
 
-        # Extract approved product name from uploaded guidelines.
+        # Extract approved product name
         name_match = re.search(
             r"Approved name:\s*(.+)",
             guideline_text,
@@ -27,7 +32,7 @@ class BrandComplianceChecker:
         if name_match:
             approved_name = name_match.group(1).strip()
 
-        # Extract approved uptime from uploaded guidelines.
+        # Extract approved uptime
         uptime_match = re.search(
             r"Approved uptime:\s*(\d+(?:\.\d+)?%)",
             guideline_text,
@@ -37,7 +42,7 @@ class BrandComplianceChecker:
         if uptime_match:
             approved_uptime = uptime_match.group(1)
 
-        # Check incorrect product terminology.
+        # Check incorrect product terminology
         if re.search(r"\bBrand Guard Cloud\b", content, re.IGNORECASE):
 
             findings.append({
@@ -49,7 +54,7 @@ class BrandComplianceChecker:
                 "recommendation": f"Use {approved_name}."
             })
 
-        # Check incorrect uptime claims.
+        # Check incorrect uptime claims
         if re.search(r"\b100%\s+uptime\b", content, re.IGNORECASE):
 
             findings.append({
@@ -64,25 +69,48 @@ class BrandComplianceChecker:
                 )
             })
 
-        # Check prohibited promotional claims.
-        for claim in prohibited_claims:
+        # Check prohibited promotional claims
+        # Longer matches take priority to avoid duplicate findings.
 
-            if claim.lower() in content.lower():
+        matched_spans = []
 
-                findings.append({
-                    "category": "Promotional Claim",
-                    "severity": "High",
-                    "issue": "Potentially unsupported promotional claim",
-                    "evidence": claim,
-                    "guideline_reference": (
-                        "Prohibited Promotional Claims section"
-                    ),
-                    "recommendation": (
-                        "Remove this claim or provide approved "
-                        "supporting evidence."
-                    )
-                })
+        for claim in sorted(prohibited_claims, key=len, reverse=True):
 
+            match = re.search(
+                re.escape(claim),
+                content,
+                re.IGNORECASE
+            )
+
+            if not match:
+                continue
+
+            start, end = match.span()
+
+            # Skip overlapping claims
+            if any(
+                start < old_end and end > old_start
+                for old_start, old_end in matched_spans
+            ):
+                continue
+
+            matched_spans.append((start, end))
+
+            findings.append({
+                "category": "Promotional Claim",
+                "severity": "High",
+                "issue": "Potentially unsupported promotional claim",
+                "evidence": content[start:end],
+                "guideline_reference": (
+                    "Prohibited Promotional Claims section"
+                ),
+                "recommendation": (
+                    "Remove this claim or provide approved "
+                    "supporting evidence."
+                )
+            })
+
+        # Return compliance report
         return {
             "brand": "BrandGuard AI",
             "total_issues": len(findings),
