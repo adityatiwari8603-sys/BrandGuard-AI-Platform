@@ -1,3 +1,4 @@
+
 from datetime import datetime, timezone
 
 from fastapi import FastAPI, UploadFile, File, HTTPException
@@ -26,17 +27,18 @@ app = FastAPI(
 
 # ==================================================
 # CORS CONFIGURATION
-# Allows React frontend to communicate with FastAPI
+# Local Development + Vercel Production
 # ==================================================
 
 app.add_middleware(
     CORSMiddleware,
-   allow_origins=[
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    "http://localhost:5174",
-    "http://127.0.0.1:5174"
-],
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:5174",
+        "http://127.0.0.1:5174",
+        "https://brandguard-ai-platform.vercel.app"
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
